@@ -1,0 +1,6 @@
+﻿<h1>Event List</h1>
+{% for event in events %}
+<div>{{ event.title }} - {{ event.date }}</div>
+{% empty %}
+<p>No events yet. Run python manage.py scan_events</p>
+{% endfor %}
