@@ -1,0 +1,159 @@
+﻿import requests
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+import re
+from .error_handling import safe_scraper
+
+# Inline date parsing functions (copied from dates.py)
+def parse_event_date(text):
+    # Simple implementation
+    # Try common formats
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%b %d, %Y", "%B %d, %Y", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(text, fmt)
+        except:
+            pass
+    # Try regex for "Month day, year"
+    m = re.search(r'(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})', text)
+    if m:
+        month_str = m.group(1)
+        day = int(m.group(2))
+        year = int(m.group(3))
+        try:
+            dt = datetime.strptime(month_str, "%B")
+        except:
+            try:
+                dt = datetime.strptime(month_str, "%b")
+            except:
+                return None
+        return dt.replace(year=year, day=day)
+    return None
+
+def apply_time(text, dt):
+    m = re.search(r'(\d{1,2}):(\d{2})\s*(am|pm)?', text, re.I)
+    if m:
+        hour = int(m.group(1))
+        minute = int(m.group(2))
+        ampm = m.group(3) and m.group(3).lower()
+        if ampm == 'pm' and hour != 12:
+            hour += 12
+        elif ampm == 'am' and hour == 12:
+            hour = 0
+        return dt.replace(hour=hour, minute=minute)
+    # Also try "7pm" etc.
+    m2 = re.search(r'(\d{1,2})\s*(am|pm)', text, re.I)
+    if m2:
+        hour = int(m2.group(1))
+        ampm = m2.group(2).lower()
+        if ampm == 'pm' and hour != 12:
+            hour += 12
+        elif ampm == 'am' and hour == 12:
+            hour = 0
+        return dt.replace(hour=hour, minute=0)
+    return dt
+
+@safe_scraper("eGotickets Kenya")
+def fetch_egotickets(days_ahead=30, county="Nairobi"):
+    events = []
+    url = "https://www.egoticketskenya.com/events"
+    try:
+        resp = requests.get(url, timeout=20)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        for card in soup.select('.event-card, .event-item'):
+            title_elem = card.select_one('h3, .title')
+            if not title_elem:
+                continue
+            title = title_elem.text.strip()
+            date_elem = card.select_one('.date, .event-date')
+            if not date_elem:
+                continue
+            date_text = date_elem.text.strip()
+            dt = parse_event_date(date_text)
+            if not dt or dt < datetime.now() - timedelta(days=1):
+                continue
+            dt = apply_time(date_text, dt)
+            venue_elem = card.select_one('.venue, .location')
+            venue = venue_elem.text.strip() if venue_elem else county
+            link_elem = card.select_one('a')
+            link = link_elem['href'] if link_elem else ""
+            if link and not link.startswith('http'):
+                link = "https://www.egoticketskenya.com" + link
+            img_elem = card.select_one('img')
+            poster = img_elem['src'] if img_elem and img_elem.get('src') else ""
+            events.append({
+                'title': title, 'date': dt.isoformat(), 'venue': venue, 'ticket_url': link,
+                'source': 'eGotickets', 'county': county, 'poster_image_url': poster,
+                'ai_category': 'event', 'description': '',
+            })
+    except Exception as e:
+        print(f"eGotickets error: {e}")
+    return events
+
+@safe_scraper("MTickets")
+def fetch_mtickets(days_ahead=30, county="Nairobi"):
+    events = []
+    url = "https://mtickets.co.ke/events"
+    try:
+        resp = requests.get(url, timeout=20)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        for card in soup.select('.event-item, .event-card'):
+            title_elem = card.select_one('h3')
+            if not title_elem:
+                continue
+            title = title_elem.text.strip()
+            date_elem = card.select_one('.date')
+            if not date_elem:
+                continue
+            date_text = date_elem.text.strip()
+            dt = parse_event_date(date_text)
+            if not dt or dt < datetime.now() - timedelta(days=1):
+                continue
+            dt = apply_time(date_text, dt)
+            venue_elem = card.select_one('.venue')
+            venue = venue_elem.text.strip() if venue_elem else county
+            link_elem = card.select_one('a')
+            link = link_elem['href'] if link_elem else ""
+            if link and not link.startswith('http'):
+                link = "https://mtickets.co.ke" + link
+            events.append({'title': title, 'date': dt.isoformat(), 'venue': venue, 'ticket_url': link,
+                           'source': 'MTickets', 'county': county, 'poster_image_url': ''})
+    except Exception as e:
+        print(f"MTickets error: {e}")
+    return events
+
+@safe_scraper("Mookh Africa")
+def fetch_mookh(days_ahead=30, county="Nairobi"):
+    events = []
+    url = "https://mookh.com/events"
+    try:
+        resp = requests.get(url, timeout=20)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        for card in soup.select('.event-card, .listing-item'):
+            title_elem = card.select_one('h3, .title')
+            if not title_elem:
+                continue
+            title = title_elem.text.strip()
+            date_elem = card.select_one('.date')
+            if not date_elem:
+                continue
+            date_text = date_elem.text.strip()
+            dt = parse_event_date(date_text)
+            if not dt or dt < datetime.now() - timedelta(days=1):
+                continue
+            dt = apply_time(date_text, dt)
+            venue_elem = card.select_one('.venue, .location')
+            venue = venue_elem.text.strip() if venue_elem else county
+            link_elem = card.select_one('a')
+            link = link_elem['href'] if link_elem else ""
+            if link and not link.startswith('http'):
+                link = "https://mookh.com" + link
+            events.append({'title': title, 'date': dt.isoformat(), 'venue': venue, 'ticket_url': link,
+                           'source': 'Mookh', 'county': county})
+    except Exception as e:
+        print(f"Mookh error: {e}")
+    return events
+
+@safe_scraper("Social Hashtag Events")
+def fetch_social_events(days_ahead=30, county="Nairobi"):
+    # Placeholder for future social media scraping
+    return []

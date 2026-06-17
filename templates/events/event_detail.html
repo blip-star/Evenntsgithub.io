@@ -1,4 +1,80 @@
-﻿<h1>Event Detail</h1>
-<h2>{{ event.title }}</h2>
-<p>{{ event.date }}</p>
-<p>{{ event.venue }}</p>
+﻿{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ event.title }} · Black Label</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/black_label.css' %}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .bl-event-hero { margin-bottom: 2rem; border-radius: 20px; overflow: hidden; max-height: 400px; }
+        .bl-event-hero img { width: 100%; height: auto; object-fit: cover; }
+        .bl-event-info { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .bl-event-details, .bl-event-weather { background: var(--bl-surface); padding: 1.5rem; border-radius: 20px; }
+        .bl-event-weather { text-align: center; }
+        .bl-weather-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .bl-map { height: 300px; border-radius: 20px; overflow: hidden; margin-top: 1rem; }
+        .bl-weather-temp { font-size: 2rem; font-weight: 700; color: var(--bl-gold); }
+        .bl-score-badge { background: var(--bl-gold); color: #000; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: bold; display: inline-block; margin-top: 1rem; }
+        .bl-ride-buttons { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+        .bl-ride-btn { background: #222; border: none; padding: 0.5rem 1rem; border-radius: 8px; color: var(--bl-text); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .bl-ride-btn.uber { background: #000; color: #fff; }
+        .bl-ride-btn.bolt { background: #1a6e3f; color: #fff; }
+    </style>
+</head>
+<body>
+<div class="bl-shell">
+    <aside class="bl-sidebar">{% include "events/sidebar.html" %}</aside>
+    <main class="bl-main">
+        <div class="bl-event-hero">
+            {% if event.poster_image_url %}
+                <img src="{{ event.poster_image_url }}" alt="{{ event.title }}">
+            {% else %}
+                <img src="https://picsum.photos/id/104/800/400" alt="Event image">
+            {% endif %}
+        </div>
+        <div class="bl-event-info">
+            <div class="bl-event-details">
+                <h1 class="bl-page-title">{{ event.title }}</h1>
+                <p><strong>📅 Date:</strong> {{ event.date|date:"l, F j, Y · H:i" }}</p>
+                <p><strong>📍 Venue:</strong> {{ event.venue }}</p>
+                <p><strong>🏷️ Source:</strong> {{ event.source }}</p>
+                <p><strong>🎟️ Ticket:</strong> <a href="{{ event.ticket_url }}" target="_blank">{% if event.ticket_url != "#" %}{{ event.ticket_url }}{% else %}Contact organizer{% endif %}</a></p>
+                <p><strong>📝 Description:</strong> {{ event.description|default:"No description available." }}</p>
+                <p><strong>🤖 Why recommended:</strong> {{ event.ai_reason|default:"AI score based on your preferences" }}</p>
+                <div><span class="bl-score-badge">AI Score: {{ event.ai_score|floatformat:0|default:"0" }}</span></div>
+            </div>
+            <div class="bl-event-weather">
+                <div class="bl-weather-icon">🌦️</div>
+                <div class="bl-weather-temp">{{ event.weather_temp_c|default:"24" }}°C</div>
+                <div>{{ event.weather_forecast|default:"Clear skies" }}</div>
+                <div>💧 Rain: {{ event.weather_rain_pct|default:"5" }}%</div>
+            </div>
+        </div>
+        <div class="bl-map" id="event-map" data-lat="{{ event.map_lat|default:'-1.2864' }}" data-lon="{{ event.map_lon|default:'36.8172' }}" data-venue="{{ event.venue|urlencode }}"></div>
+        <div class="bl-ride-buttons">
+            <a href="#" id="uber-link" class="bl-ride-btn uber" target="_blank">🚗 Uber</a>
+            <a href="#" id="bolt-link" class="bl-ride-btn bolt" target="_blank">⚡ Bolt</a>
+            <a href="#" id="google-maps-link" class="bl-ride-btn" target="_blank">🗺️ Google Maps</a>
+        </div>
+        <script>
+            var lat = parseFloat(document.getElementById('event-map').dataset.lat);
+            var lon = parseFloat(document.getElementById('event-map').dataset.lon);
+            var venue = document.getElementById('event-map').dataset.venue;
+            var map = L.map('event-map').setView([lat, lon], 14);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB'
+            }).addTo(map);
+            L.marker([lat, lon]).addTo(map).bindPopup(venue).openPopup();
+            document.getElementById('uber-link').href = 'https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[formatted_address]=' + venue;
+            document.getElementById('bolt-link').href = 'https://bolt.eu/en/ride/?pickup=my_location&destination=' + encodeURIComponent(venue);
+            document.getElementById('google-maps-link').href = 'https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lon;
+        </script>
+        <div style="margin-top: 2rem; text-align: center;">
+            <a href="/events/" class="bl-btn">← Back to Events</a>
+        </div>
+    </main>
+</div>
+</body>
+</html>

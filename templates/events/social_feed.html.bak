@@ -1,0 +1,57 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Social Buzz · Black Label</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/black_label.css' %}">
+    <style>
+        .social-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin-top: 2rem; }
+        .social-card { background: var(--bl-card); border-radius: 20px; padding: 1.5rem; text-align: center; border: 1px solid var(--bl-gold-dim); }
+        .social-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .instagram { color: #E4405F; }
+        .twitter { color: #1DA1F2; }
+        .tiktok { color: #000; }
+        .social-feed-placeholder { background: #1a1a1a; border-radius: 12px; padding: 1rem; margin-top: 1rem; text-align: left; font-size: 0.85rem; color: #aaa; }
+        .social-feed-placeholder a { color: var(--bl-gold); }
+    </style>
+    <!-- Instagram embed script -->
+    <script async defer src="//www.instagram.com/embed.js"></script>
+    <!-- Twitter embed script -->
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <!-- TikTok embed script -->
+    <script async src="https://www.tiktok.com/embed.js"></script>
+</head>
+<body>
+<div class="bl-shell">
+    <aside class="bl-sidebar">{% include "events/sidebar.html" %}</aside>
+    <main class="bl-main">
+        <h1 class="bl-page-title"><i class="fas fa-share-alt"></i> Social Buzz</h1>
+        <p class="bl-page-subtitle">Real‑time posts from Instagram, X (Twitter), and TikTok – #NairobiEvents</p>
+        <div class="social-grid">
+            <!-- Instagram -->
+            <div class="social-card">
+                <div class="social-icon instagram"><i class="fab fa-instagram"></i></div>
+                <h3>Instagram</h3>
+                <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/explore/tags/nairobievents/" data-instgrm-version="14" style=" background:#FFF; border-radius:16px; max-width:540px; margin:auto;"></blockquote>
+                <div class="social-feed-placeholder">💡 If Instagram feed doesn't load, <a href="https://www.instagram.com/explore/tags/nairobievents/" target="_blank">click here to view on Instagram</a>.</div>
+            </div>
+            <!-- X (Twitter) -->
+            <div class="social-card">
+                <div class="social-icon twitter"><i class="fab fa-twitter"></i></div>
+                <h3>X (Twitter)</h3>
+                <a class="twitter-timeline" data-height="500" href="https://twitter.com/hashtag/NairobiEvents">#NairobiEvents</a>
+                <div class="social-feed-placeholder">💡 If Twitter feed doesn't load, <a href="https://twitter.com/hashtag/NairobiEvents" target="_blank">click here to view on X</a>.</div>
+            </div>
+            <!-- TikTok -->
+            <div class="social-card">
+                <div class="social-icon tiktok"><i class="fab fa-tiktok"></i></div>
+                <h3>TikTok</h3>
+                <blockquote class="tiktok-embed" cite="https://www.tiktok.com/tag/nairobievents" data-unique-id="nairobievents" data-domain="tiktok.com" style="max-width: 100%;"></blockquote>
+                <div class="social-feed-placeholder">💡 If TikTok feed doesn't load, <a href="https://www.tiktok.com/tag/nairobievents" target="_blank">click here to view on TikTok</a>.</div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

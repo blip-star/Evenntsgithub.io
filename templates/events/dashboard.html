@@ -1,2 +1,53 @@
-﻿<h1>Dashboard</h1>
-<p>Events will appear here after scanning.</p>
+﻿{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard · Black Label</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/black_label.css' %}">
+    <style>
+        .bl-hero { background: linear-gradient(135deg, #1a2a3a, #0f1a24); border-radius: 24px; padding: 2rem; margin-bottom: 2rem; text-align: center; }
+        .bl-stats-modern { display: flex; gap: 1.5rem; justify-content: center; margin: 1.5rem 0; }
+        .bl-stat-card { background: var(--bl-card); border-radius: 20px; padding: 1rem 2rem; text-align: center; min-width: 120px; border: 1px solid var(--bl-gold-dim); }
+        .bl-stat-number { font-size: 2rem; font-weight: bold; color: var(--bl-gold); }
+        .bl-weather-mini { display: flex; gap: 1rem; justify-content: space-between; margin-top: 1rem; background: rgba(0,0,0,0.3); border-radius: 16px; padding: 0.75rem; }
+        .bl-weather-day { text-align: center; flex: 1; }
+    </style>
+</head>
+<body>
+<div class="bl-shell">
+    <aside class="bl-sidebar">{% include "events/sidebar.html" %}</aside>
+    <main class="bl-main">
+        <div class="bl-hero">
+            <h1>Black Label Dashboard</h1>
+            <p>AI-curated events across Kenya — personalized, ranked, and ready.</p>
+            <div class="bl-stats-modern">
+                <div class="bl-stat-card"><div class="bl-stat-number">{{ events|length }}</div><div>Upcoming</div></div>
+                <div class="bl-stat-card"><div class="bl-stat-number">{{ recommended }}</div><div>Recommended</div></div>
+                <div class="bl-stat-card"><div class="bl-stat-number">5+</div><div>Categories</div></div>
+            </div>
+            <div class="bl-weather-mini">
+                <div class="bl-weather-day">☀️ Sat 24°C</div><div class="bl-weather-day">⛅ Sun 25°C</div><div class="bl-weather-day">🌧️ Mon 25°C</div><div class="bl-weather-day">☁️ Tue 24°C</div><div class="bl-weather-day">🌦️ Wed 23°C</div>
+            </div>
+            <a href="/scan/" class="bl-btn bl-btn-primary" style="margin-top:1rem;"><i class="fas fa-sync-alt"></i> Run Scan</a>
+        </div>
+        <h2 class="bl-section-title"><i class="fas fa-star"></i> Top Picks for You</h2>
+        <div class="bl-grid">
+            {% for event in events|slice:":6" %}
+            <article class="bl-card">
+                {% if event.poster_image_url %}<div class="bl-poster"><img src="{{ event.poster_image_url }}" alt="{{ event.title }}"></div>{% else %}<div class="bl-poster" style="background:#1a1a1a; display:flex; align-items:center; justify-content:center;">📷</div>{% endif %}
+                <div class="bl-card-body">
+                    <div class="bl-badge"><i class="fas fa-tag"></i> {{ event.ai_category|default:"Event" }}</div>
+                    <div class="bl-event-date"><i class="far fa-calendar-alt"></i> {{ event.date|date:"D, M j · H:i" }}</div>
+                    <h3 class="bl-event-title"><a href="/events/{{ event.id }}/">{{ event.title|truncatechars:50 }}</a></h3>
+                    <p class="bl-event-venue"><i class="fas fa-map-marker-alt"></i> {{ event.venue|truncatechars:35 }}</p>
+                    <div class="bl-event-meta"><span class="bl-source-tag">{{ event.source }}</span><span class="bl-score"><i class="fas fa-chart-line"></i> {{ event.ai_score|default:75 }}</span></div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+</body>
+</html>

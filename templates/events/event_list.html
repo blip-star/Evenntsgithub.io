@@ -1,6 +1,64 @@
-﻿<h1>Event List</h1>
-{% for event in events %}
-<div>{{ event.title }} - {{ event.date }}</div>
-{% empty %}
-<p>No events yet. Run python manage.py scan_events</p>
-{% endfor %}
+﻿{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Events · Black Label</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/black_label.css' %}">
+</head>
+<body>
+<div class="bl-shell">
+    <aside class="bl-sidebar">{% include "events/sidebar.html" %}</aside>
+    <main class="bl-main">
+        <div class="bl-page-header"><div><h1 class="bl-page-title">All Events</h1><p class="bl-page-subtitle">{{ events|length }} events found</p></div></div>
+        <div class="bl-filters">
+            <form method="get" class="bl-filter-row">
+                <select class="bl-select" name="source">
+                    <option value="">All sources</option>
+                    {% for s in sources %}<option value="{{ s }}" {% if request.GET.source == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                </select>
+
+                <!-- DYNAMIC COUNTY DROPDOWN (updated) -->
+                <select class="bl-select" name="county">
+                    <option value="">All counties</option>
+                    {% for county in counties %}
+                        <option value="{{ county }}" {% if request.GET.county == county %}selected{% endif %}>
+                            {{ county }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <select class="bl-select" name="category">
+                    <option value="">All categories</option>
+                    <option value="car events" {% if request.GET.category == 'car events' %}selected{% endif %}>Car & Motorsport</option>
+                    <option value="rugby" {% if request.GET.category == 'rugby' %}selected{% endif %}>Rugby</option>
+                    <option value="boxing" {% if request.GET.category == 'boxing' %}selected{% endif %}>Boxing</option>
+                    <option value="mma" {% if request.GET.category == 'mma' %}selected{% endif %}>MMA</option>
+                    <option value="amapiano" {% if request.GET.category == 'amapiano' %}selected{% endif %}>Amapiano</option>
+                    <option value="reggae" {% if request.GET.category == 'reggae' %}selected{% endif %}>Reggae</option>
+                    <option value="food" {% if request.GET.category == 'food' %}selected{% endif %}>Food</option>
+                    <option value="live music" {% if request.GET.category == 'live music' %}selected{% endif %}>Live Music</option>
+                    <option value="comedy" {% if request.GET.category == 'comedy' %}selected{% endif %}>Comedy</option>
+                </select>
+                <button type="submit" class="bl-btn bl-btn-sm bl-btn-primary">Apply</button>
+                <a href="/events/" class="bl-btn bl-btn-sm">Clear</a>
+            </form>
+        </div>
+        <div class="bl-grid">
+            {% for event in events %}
+            <article class="bl-card">
+                {% if event.poster_image_url %}<div class="bl-poster"><img src="{{ event.poster_image_url }}" alt="{{ event.title }}"></div>{% else %}<div class="bl-poster" style="background:#1a1a1a; display:flex; align-items:center; justify-content:center;">No image</div>{% endif %}
+                <div class="bl-card-body">
+                    {% if event.is_recommended %}<div class="bl-badge">★ Recommended</div>{% endif %}
+                    <div class="bl-event-date">{{ event.date|date:"D, M j · H:i" }}</div>
+                    <h3 class="bl-event-title"><a href="/events/{{ event.id }}/">{{ event.title|truncatechars:70 }}</a></h3>
+                    <p class="bl-event-venue">{{ event.venue|truncatechars:45 }}</p>
+                    <div class="bl-event-meta"><span class="bl-source-tag">{{ event.source }}</span><span class="bl-score">{{ event.ai_score|floatformat:0|default:"0" }}</span></div>
+                </div>
+            </article>
+            {% empty %}<p>No events match your filters. <a href="/scan/">Run a scan</a> to fetch events.</p>{% endfor %}
+        </div>
+    </main>
+</div>
+</body>
+</html>

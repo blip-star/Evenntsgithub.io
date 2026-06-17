@@ -1,0 +1,5 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html><head><title>Preferences · Black Label</title><link rel="stylesheet" href="{% static 'css/black_label.css' %}"></head>
+<body><div class="bl-shell"><aside class="bl-sidebar">{% include "events/sidebar.html" %}</aside><main class="bl-main"><h1>Preferences</h1><form method="post">{% csrf_token %}<input type="text" name="categories" placeholder="Preferred categories"><button type="submit">Save</button></form></main></div></body>
+</html>

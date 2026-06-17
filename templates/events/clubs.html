@@ -1,0 +1,219 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clubs & Venues · Black Label</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/black_label.css' %}">
+</head>
+<body>
+<div class="bl-shell">
+    <aside class="bl-sidebar">{% include "events/sidebar.html" %}</aside>
+    <main class="bl-main">
+        <header class="bl-clubs-hero">
+            <div class="bl-clubs-hero-text">
+                <p class="bl-clubs-eyebrow">Venue Intelligence</p>
+                <h1 class="bl-page-title">Clubs &amp; Venues</h1>
+                <p class="bl-page-subtitle">
+                    {{ total_clubs }} venue{{ total_clubs|pluralize }} across
+                    {{ country_count }} countr{{ country_count|pluralize:"y,ies" }}
+                    &middot; live weather &amp; upcoming events
+                </p>
+            </div>
+            <div class="bl-clubs-stats">
+                <div class="bl-stat-card">
+                    <span class="bl-stat-number">{{ total_clubs }}</span>
+                    <span class="bl-stat-label">Venues</span>
+                </div>
+                <div class="bl-stat-card">
+                    <span class="bl-stat-number">{{ county_count }}</span>
+                    <span class="bl-stat-label">Regions</span>
+                </div>
+                <div class="bl-stat-card">
+                    <span class="bl-stat-number">{{ total_upcoming_events }}</span>
+                    <span class="bl-stat-label">Upcoming Events</span>
+                </div>
+                <div class="bl-stat-card">
+                    <span class="bl-stat-number">{{ weather_available }}</span>
+                    <span class="bl-stat-label">Live Weather</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="bl-filters bl-clubs-filters">
+            <form method="get" class="bl-filter-row">
+                <label class="bl-filter-label" for="country-filter">Country</label>
+                <select class="bl-select" id="country-filter" name="country">
+                    <option value="">All countries</option>
+                    {% for country in countries %}
+                    <option value="{{ country }}" {% if selected_country == country %}selected{% endif %}>{{ country }}</option>
+                    {% endfor %}
+                </select>
+
+                <label class="bl-filter-label" for="county-filter">Region</label>
+                <select class="bl-select" id="county-filter" name="county">
+                    <option value="">All regions</option>
+                    {% for county in counties %}
+                    <option value="{{ county }}" {% if selected_county == county %}selected{% endif %}>{{ county }}</option>
+                    {% endfor %}
+                </select>
+
+                <label class="bl-filter-label" for="category-filter">Category</label>
+                <select class="bl-select" id="category-filter" name="category">
+                    <option value="">All categories</option>
+                    {% for category in categories %}
+                    <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="bl-btn bl-btn-sm bl-btn-primary">
+                    <i class="fas fa-filter"></i> Apply
+                </button>
+                <a href="{% url 'club_list' %}" class="bl-btn bl-btn-sm">Clear</a>
+            </form>
+            {% if not weather_configured %}
+            <p class="bl-clubs-notice">
+                <i class="fas fa-cloud-sun"></i>
+                Set <code>OPENWEATHER_API_KEY</code> in your environment to enable live climate data.
+            </p>
+            {% endif %}
+        </section>
+
+        {% for section in country_sections %}
+        <section class="bl-country-section">
+            <div class="bl-country-header">
+                <h2 class="bl-country-title">
+                    <i class="fas fa-globe-africa"></i> {{ section.country }}
+                </h2>
+                <span class="bl-country-meta">
+                    {{ section.venue_count }} venue{{ section.venue_count|pluralize }}
+                    &middot; {{ section.region_count }} region{{ section.region_count|pluralize }}
+                </span>
+            </div>
+
+            {% for county, category_groups in section.county_groups.items %}
+            <div class="bl-county-block">
+                <h3 class="bl-county-title">
+                    <i class="fas fa-location-dot"></i> {{ county }}
+                </h3>
+
+                {% for category, club_items in category_groups.items %}
+                <div class="bl-category-block">
+                    <h4 class="bl-category-title">
+                        {{ category }}
+                        <span class="bl-category-count">{{ club_items|length }}</span>
+                    </h4>
+
+                    <div class="bl-grid bl-clubs-grid">
+                        {% for item in club_items %}
+                        <article class="bl-club-card">
+                            {% if item.club.image_url %}
+                            <div class="bl-club-image">
+                                <img src="{{ item.club.image_url }}" alt="{{ item.club.name }}">
+                            </div>
+                            {% endif %}
+
+                            <div class="bl-club-body">
+                                <div class="bl-club-top">
+                                    <div>
+                                        <h5 class="bl-club-name">{{ item.club.name }}</h5>
+                                        <span class="bl-badge">{{ item.club.category|default:"General" }}</span>
+                                    </div>
+                                    {% if item.event_count %}
+                                    <span class="bl-club-events-badge">
+                                        <i class="far fa-calendar-check"></i> {{ item.event_count }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+
+                                <p class="bl-club-location">
+                                    <i class="fas fa-map-pin"></i>
+                                    {{ item.club.full_location }}
+                                </p>
+
+                                {% if item.club.description %}
+                                <p class="bl-club-desc">{{ item.club.description|truncatechars:120 }}</p>
+                                {% endif %}
+
+                                <div class="bl-club-weather">
+                                    {% if item.weather %}
+                                    <img src="{{ item.weather.icon_url }}" alt="{{ item.weather.condition }}" width="44" height="44">
+                                    <div class="bl-club-weather-details">
+                                        <span class="bl-club-weather-temp">{{ item.weather.temp }}°C</span>
+                                        <span class="bl-club-weather-condition">{{ item.weather.condition }}</span>
+                                        <span class="bl-club-weather-meta">
+                                            Feels {{ item.weather.feels_like }}°C
+                                            &middot; {{ item.weather.humidity }}% humidity
+                                            {% if item.weather.rain %}&middot; {{ item.weather.rain }}mm rain{% endif %}
+                                            {% if item.weather.wind_speed %}&middot; {{ item.weather.wind_speed }} km/h wind{% endif %}
+                                        </span>
+                                    </div>
+                                    {% elif item.club.has_coordinates %}
+                                    <div class="bl-club-weather-unavailable">
+                                        <i class="fas fa-cloud"></i> Climate data temporarily unavailable
+                                    </div>
+                                    {% else %}
+                                    <div class="bl-club-weather-unavailable">
+                                        <i class="fas fa-location-crosshairs"></i> Add coordinates to enable live weather
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                {% if item.events %}
+                                <div class="bl-club-events">
+                                    <p class="bl-club-events-label">Next events</p>
+                                    <ul>
+                                        {% for event in item.events %}
+                                        <li>
+                                            <a href="{% url 'event_detail' event.id %}">{{ event.title|truncatechars:40 }}</a>
+                                            <time>{{ event.date|date:"M j, H:i" }}</time>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+
+                                <div class="bl-club-actions">
+                                    {% if item.club.has_coordinates %}
+                                    <a href="https://www.google.com/maps?q={{ item.club.lat }},{{ item.club.lon }}"
+                                       target="_blank" rel="noopener noreferrer" class="bl-btn bl-btn-sm">
+                                        <i class="fas fa-map"></i> Map
+                                    </a>
+                                    {% else %}
+                                    <a href="https://www.google.com/maps/search/{{ item.club.name|urlencode }}+{{ item.club.county|urlencode }}"
+                                       target="_blank" rel="noopener noreferrer" class="bl-btn bl-btn-sm">
+                                        <i class="fas fa-map"></i> Map
+                                    </a>
+                                    {% endif %}
+                                    {% if item.club.website %}
+                                    <a href="{{ item.club.website }}" target="_blank" rel="noopener noreferrer" class="bl-btn bl-btn-sm">
+                                        <i class="fas fa-external-link-alt"></i> Website
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'event_list' %}?venue={{ item.club.name|urlencode }}" class="bl-btn bl-btn-sm bl-btn-primary">
+                                        View events
+                                    </a>
+                                </div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </section>
+        {% empty %}
+        <div class="bl-empty-state">
+            <i class="fas fa-building"></i>
+            <h2>No venues match your filters</h2>
+            <p>Try clearing filters or <a href="{% url 'scan' %}">run a scan</a> to discover new venues.</p>
+        </div>
+        {% endfor %}
+    </main>
+</div>
+</body>
+</html>

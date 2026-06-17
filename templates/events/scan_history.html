@@ -1,0 +1,5 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html><head><title>Scan History · Black Label</title><link rel="stylesheet" href="{% static 'css/black_label.css' %}"></head>
+<body><div class="bl-shell"><aside class="bl-sidebar">{% include "events/sidebar.html" %}</aside><main class="bl-main"><h1>Scan History</h1><table>{% for s in scans %}<tr><td>{{ s.started_at }}</td><td>{{ s.county }}</td><td>{{ s.events_found }}</td></tr>{% endfor %}</table></main></div></body>
+</html>

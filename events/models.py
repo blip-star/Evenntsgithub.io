@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 from django.utils import timezone
 
 class Event(models.Model):
@@ -117,3 +117,43 @@ class UserPreference(models.Model):
     def get_or_create_for_user(cls, user):
         obj, _ = cls.objects.get_or_create(user=user)
         return obj
+
+class Club(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    country = models.CharField(max_length=100, blank=True, default='Kenya')
+    county = models.CharField(max_length=100, blank=True)
+    location_area = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='Neighbourhood or street-level location',
+    )
+    lat = models.FloatField(null=True, blank=True)
+    lon = models.FloatField(null=True, blank=True)
+    description = models.TextField(blank=True)
+    category = models.CharField(max_length=50, blank=True, default='General')
+    image_url = models.URLField(blank=True)
+    website = models.URLField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def has_coordinates(self):
+        return self.lat is not None and self.lon is not None
+
+    @property
+    def full_location(self):
+        parts = []
+        if self.location_area:
+            parts.append(self.location_area)
+        if self.county and self.county not in parts:
+            parts.append(self.county)
+        country = self.country or 'Kenya'
+        if country not in parts:
+            parts.append(country)
+        return ', '.join(parts) if parts else country
+
+    class Meta:
+        ordering = ['country', 'county', 'name']

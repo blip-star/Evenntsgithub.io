@@ -1,0 +1,196 @@
+﻿import csv
+import logging
+from io import StringIO
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Avg
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_protect
+from icalendar import Calendar, Event as ICalEvent
+
+from events.models import Event, ScanRun, SocialPost, AutoScanConfig, UserPreference
+from events.services.scanner import run_scan
+from events.services.weather import get_week_summary
+from events.services.whatsapp import is_whatsapp_ready
+from events.services.ntfy_push import ntfy_status
+
+logger = logging.getLogger(__name__)
+
+
+def dashboard(request):
+    now = timezone.now()
+    upcoming = Event.objects.filter(date__gte=now).order_by('date')
+    recommended_count = upcoming.filter(is_recommended=True).count()
+    events = upcoming[:12]
+    weather = get_week_summary()
+    return render(request, 'events/dashboard.html', {
+        'events': events,
+        'recommended': recommended_count,
+        'weather': weather,
+    })
+
+
+def event_list(request):
+    queryset = Event.objects.filter(date__gte=timezone.now()).order_by('date')
+
+    q = request.GET.get('q')
+    if q:
+        queryset = queryset.filter(Q(title__icontains=q) | Q(venue__icontains=q) | Q(description__icontains=q))
+
+    source = request.GET.get('source')
+    if source:
+        queryset = queryset.filter(source=source)
+
+    county_val = request.GET.get('county')
+    if county_val:
+        queryset = queryset.filter(county__icontains=county_val)
+
+    category = request.GET.get('category')
+    if category:
+        queryset = queryset.filter(ai_category=category)
+
+    venue = request.GET.get('venue')
+    if venue:
+        queryset = queryset.filter(venue__icontains=venue)
+
+    if request.GET.get('recommended') == '1':
+        queryset = queryset.filter(is_recommended=True)
+
+    sources = Event.objects.values_list('source', flat=True).distinct()
+    return render(request, 'events/event_list.html', {'events': queryset, 'sources': sources})
+
+
+def event_detail(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    return render(request, 'events/event_detail.html', {'event': event})
+
+
+def social_feed(request):
+    posts = SocialPost.objects.select_related('event').order_by('-scraped_at')[:20]
+    return render(request, 'events/social_feed.html', {'posts': posts})
+
+
+@csrf_protect
+def scan_view(request):
+    config = AutoScanConfig.get_config()
+    if request.method == 'POST':
+        action = request.POST.get('action', 'scan')
+        if action == 'autoscan':
+            config.enabled = request.POST.get('enabled') == 'on'
+            config.county = request.POST.get('county', config.county)
+            config.days_ahead = int(request.POST.get('days_ahead', config.days_ahead))
+            config.interval_hours = int(request.POST.get('interval_hours', config.interval_hours))
+            config.include_social = request.POST.get('include_social') == 'on'
+            config.save()
+            messages.success(request, f"Autoscan {'enabled' if config.enabled else 'disabled'}.")
+            return redirect('scan')
+        else:
+            county = request.POST.get('county', settings.EVENTS_DEFAULT_COUNTY)
+            days_ahead = int(request.POST.get('days_ahead', settings.EVENTS_DEFAULT_DAYS_AHEAD))
+            dry_run = request.POST.get('dry_run') == 'on'
+            include_social = request.POST.get('include_social') == 'on'
+            try:
+                scan = run_scan(county, days_ahead, alert_new_only=True, dry_run=dry_run, include_social=include_social)
+                if scan.error:
+                    messages.error(request, f"Scan failed: {scan.error}")
+                else:
+                    messages.success(request, f"Scan complete: {scan.events_found} found, {scan.events_new} new.")
+            except Exception as e:
+                messages.error(request, f"Scan error: {e}")
+            return redirect('scan')
+    recent_scans = ScanRun.objects.all()[:10]
+    return render(request, 'events/scan.html', {
+        'config': config,
+        'recent_scans': recent_scans,
+    })
+
+
+def scan_history(request):
+    scans = ScanRun.objects.all().order_by('-started_at')[:50]
+    return render(request, 'events/scan_history.html', {'scans': scans})
+
+
+def settings_view(request):
+    telegram_configured = bool(settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_IDS)
+    whatsapp_ready = is_whatsapp_ready()
+    ntfy = ntfy_status()
+    context = {
+        'telegram_configured': telegram_configured,
+        'whatsapp_configured': whatsapp_ready,
+        'ntfy_configured': ntfy.get('configured', False),
+        'llm_provider': getattr(settings, 'LLM_PROVIDER', 'none'),
+    }
+    return render(request, 'events/settings.html', context)
+
+
+@login_required
+def preferences(request):
+    prefs, _ = UserPreference.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        prefs.preferred_categories = request.POST.get('preferred_categories', '')
+        prefs.preferred_counties = request.POST.get('preferred_counties', '')
+        prefs.min_price = request.POST.get('min_price') or None
+        prefs.max_price = request.POST.get('max_price') or None
+        prefs.free_events_only = request.POST.get('free_events_only') == 'on'
+        prefs.outdoor_events_only = request.POST.get('outdoor_events_only') == 'on'
+        prefs.alert_via_telegram = request.POST.get('alert_via_telegram') == 'on'
+        prefs.alert_via_ntfy = request.POST.get('alert_via_ntfy') == 'on'
+        prefs.alert_via_whatsapp = request.POST.get('alert_via_whatsapp') == 'on'
+        prefs.daily_digest = request.POST.get('daily_digest') == 'on'
+        prefs.digest_time = request.POST.get('digest_time') or None
+        prefs.save()
+        messages.success(request, "Preferences saved.")
+        return redirect('preferences')
+    return render(request, 'events/preferences.html', {'prefs': prefs})
+
+
+def ical_export(request):
+    cal = Calendar()
+    cal.add('prodid', '-//Nairobi Events Bot//')
+    cal.add('version', '2.0')
+    events = Event.objects.filter(date__gte=timezone.now()).order_by('date')[:200]
+    for ev in events:
+        ical = ICalEvent()
+        ical.add('summary', ev.title)
+        ical.add('dtstart', ev.date)
+        ical.add('location', ev.venue)
+        cal.add_component(ical)
+    response = HttpResponse(cal.to_ical(), content_type='text/calendar')
+    response['Content-Disposition'] = 'attachment; filename="events.ics"'
+    return response
+
+
+def export_events(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="events.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Title', 'Date', 'Venue', 'Source', 'Score'])
+    events = Event.objects.filter(date__gte=timezone.now()).order_by('date')[:500]
+    for ev in events:
+        writer.writerow([ev.title, ev.date.isoformat(), ev.venue, ev.source, ev.ai_score])
+    return response
+
+
+def trending_clubs(request):
+    from django.db.models import Count, Avg, Q
+    from django.utils import timezone
+    from events.models import Event
+    now = timezone.now()
+    queryset = Event.objects.filter(date__gte=now)
+    county = request.GET.get('county')
+    if county and county.strip():
+        queryset = queryset.filter(county__iexact=county)
+    clubs = queryset.values('venue').annotate(
+        event_count=Count('id'),
+        avg_score=Avg('ai_score'),
+        recommended_count=Count('id', filter=Q(is_recommended=True))
+    ).order_by('-event_count')[:50]
+    for club in clubs:
+        club['recommended_pct'] = round((club['recommended_count'] / club['event_count']) * 100, 1) if club['event_count'] > 0 else 0
+    return render(request, 'events/clubs.html', {'clubs': clubs, 'selected_county': county})
+

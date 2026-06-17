@@ -1,4 +1,4 @@
-﻿import os
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -21,7 +21,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -134,3 +133,13 @@ LOGGING = {
 }
 
 EVENT_PREFERENCES = os.getenv('EVENT_PREFERENCES', 'live music,comedy,art,festivals,food,tech,networking,outdoor,car events,motorsport,racing,drag racing,sunset corsa,boxing,mma,rugby,kenyan football,football,sports,automotive')
+
+ALLOWED_HOSTS = ['*']
+
+
+
+
+
+
+
+
